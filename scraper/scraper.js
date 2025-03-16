@@ -1,4 +1,6 @@
 const puppeteer = require("puppeteer");
+const { addToCategory } = require("../services/categoryService");
+const { addRecipe } = require("../services/recipeService");
 
 async function scrapeFoodRecipes() {
   // Launch browser
@@ -64,6 +66,21 @@ async function scrapeFoodRecipes() {
       );
       const recipeData = await scrapeFoodRecipePage(browser, url.url);
       if (recipeData) scrapedData.push(recipeData);
+
+      const category = await addToCategory(
+        recipeData.category,
+        recipeData.category
+      );
+      const recipe = await addRecipe({
+        name: recipeData.title,
+        subname: recipeData.subtitle,
+        description: recipeData.description,
+        totalTime: recipeData.totalTime,
+        prepTime: recipeData.prepTime,
+        difficulty: recipeData.difficulty,
+        imageUrl: recipeData.image,
+        category_id: category.data.id,
+      });
     }
 
     // Optional: Add a small delay between pages to be nice to the server
