@@ -1,6 +1,8 @@
 const puppeteer = require("puppeteer");
 const { addToCategory } = require("../services/categoryService");
 const { addRecipe } = require("../services/recipeService");
+const { addCookingSteps } = require("../services/cookingStepService");
+const { addTags } = require("../services/tagService");
 
 async function scrapeFoodRecipes() {
   // Launch browser
@@ -81,6 +83,10 @@ async function scrapeFoodRecipes() {
         imageUrl: recipeData.image,
         category_id: category.data.id,
       });
+
+      const steps = await addCookingSteps(recipeData.steps, recipe.data.id);
+
+      const tags = await addTags(recipe.data.id, recipeData.tags);
     }
 
     // Optional: Add a small delay between pages to be nice to the server
@@ -160,7 +166,7 @@ async function scrapeFoodRecipePage(browser, url) {
           document.querySelectorAll(
             '[data-test-id="recipe-description-allergen"]'
           ) || []
-        ).map((tag) => tag.textContent.trim());
+        ).map((allergen) => allergen.textContent.trim());
 
         const ingredients = Array.from(
           document.querySelectorAll(
