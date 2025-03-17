@@ -3,6 +3,7 @@ const { addToCategory } = require("../services/categoryService");
 const { addRecipe } = require("../services/recipeService");
 const { addCookingSteps } = require("../services/cookingStepService");
 const { addTags } = require("../services/tagService");
+const { addTools } = require("../services/cookingToolsService");
 
 async function scrapeFoodRecipes() {
   // Launch browser
@@ -87,6 +88,8 @@ async function scrapeFoodRecipes() {
       const steps = await addCookingSteps(recipeData.steps, recipe.data.id);
 
       const tags = await addTags(recipe.data.id, recipeData.tags);
+
+      const tools = await addTools(recipe.data.id, recipeData.utensils);
     }
 
     // Optional: Add a small delay between pages to be nice to the server
