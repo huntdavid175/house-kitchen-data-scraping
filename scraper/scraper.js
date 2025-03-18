@@ -98,6 +98,12 @@ async function scrapeFoodRecipes() {
         recipeData.ingredients
       );
 
+      const ingredientsNotShipped = await addIngredients(
+        recipe.data.id,
+        recipeData.ingredientsNotShipped,
+        false
+      );
+
       const nutritions = await addNutritions(
         recipeData.nutritionalValues,
         recipe.data.id
@@ -196,7 +202,7 @@ async function scrapeFoodRecipePage(browser, url) {
           return { name, quantity, image };
         });
 
-        const ingredientNotShipped = Array.from(
+        const ingredientsNotShipped = Array.from(
           document.querySelectorAll(
             '[data-test-id="ingredient-item-not-shipped"]'
           ) || []
@@ -251,7 +257,7 @@ async function scrapeFoodRecipePage(browser, url) {
           tags,
           allergens,
           ingredients,
-          ingredientNotShipped,
+          ingredientsNotShipped,
           nutritionalValues,
           utensils,
           steps,
