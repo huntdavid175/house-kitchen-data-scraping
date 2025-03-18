@@ -1,0 +1,17 @@
+services:
+  - type: worker
+    name: recipe-scraper
+    env: node
+    buildCommand: npm install
+    startCommand: node index.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DB_SSL
+        value: true
+
+databases:
+  - name: recipe-db
+    databaseName: recipe_db
+    user: postgres
+    plan: free
