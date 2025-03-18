@@ -1,18 +1,31 @@
 {
-  "name": "recipes-extraction",
+  "name": "recipe-scraper",
   "version": "1.0.0",
+  "description": "Recipe scraping service for meal kit ingredients",
   "main": "index.js",
   "scripts": {
+<<<<<<< HEAD
     "start": "node index.js"
+=======
+    "start": "node index.js",
+    "init-db": "node scripts/init-db.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+>>>>>>> 82b1ce5230256a10d5543668962aee46e1376466
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "description": "",
   "dependencies": {
+<<<<<<< HEAD
     "dotenv": "^16.4.7",
     "pg": "^8.14.0",
     "puppeteer": "^24.4.0"
+=======
+    "pg": "^8.11.3",
+    "dotenv": "^16.3.1",
+    "puppeteer": "^21.5.0",
+    "winston": "^3.11.0"
+>>>>>>> 82b1ce5230256a10d5543668962aee46e1376466
   },
   "engines": {
     "node": ">=18.0.0"
