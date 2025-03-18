@@ -28,8 +28,12 @@ RUN npm install
 # Copy app source
 COPY . .
 
-# Expose port if needed (optional)
-# EXPOSE 3000
+# Add wait-for-it script to wait for database
+ADD https://raw.githubusercontent.com/vishnubob/wait-for-it/master/wait-for-it.sh /usr/local/bin/wait-for-it
+RUN chmod +x /usr/local/bin/wait-for-it
 
-# Start the application
-CMD ["npm", "start"] 
+# Copy entrypoint script
+COPY docker-entrypoint.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
+ENTRYPOINT ["docker-entrypoint.sh"] 
