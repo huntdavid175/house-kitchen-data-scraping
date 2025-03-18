@@ -5,6 +5,7 @@ const { addCookingSteps } = require("../services/cookingStepService");
 const { addTags } = require("../services/tagService");
 const { addTools } = require("../services/cookingToolsService");
 const { addIngredients } = require("../services/ingredientService");
+const { addNutritions } = require("../services/nutritionValuesService");
 
 async function scrapeFoodRecipes() {
   // Launch browser
@@ -95,6 +96,11 @@ async function scrapeFoodRecipes() {
       const ingredients = await addIngredients(
         recipe.data.id,
         recipeData.ingredients
+      );
+
+      const nutritions = await addNutritions(
+        recipeData.nutritionalValues,
+        recipe.data.id
       );
     }
 
