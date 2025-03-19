@@ -10,8 +10,19 @@ const { addNutritions } = require("../services/nutritionValuesService");
 async function scrapeFoodRecipes() {
   // Launch browser
   const browser = await puppeteer.launch({
-    headless: true, // Set to false for debugging
-    defaultViewport: null,
+    headless: true,
+    args: [
+      "--no-sandbox",
+      "--disable-setuid-sandbox",
+      "--disable-dev-shm-usage",
+      "--disable-accelerated-2d-canvas",
+      "--disable-gpu",
+      "--window-size=1920x1080",
+    ],
+    executablePath:
+      process.env.NODE_ENV === "production"
+        ? "/usr/bin/chromium" // Path to Chromium in production
+        : undefined, // Use bundled Chromium in development
   });
   const page = await browser.newPage();
 
