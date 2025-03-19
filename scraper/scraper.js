@@ -8,6 +8,9 @@ const { addIngredients } = require("../services/ingredientService");
 const { addNutritions } = require("../services/nutritionValuesService");
 
 async function scrapeFoodRecipes() {
+  console.log("Starting browser launch...");
+  console.log("NODE_ENV:", process.env.NODE_ENV);
+
   // Launch browser
   const browser = await puppeteer.launch({
     headless: true,
@@ -21,9 +24,11 @@ async function scrapeFoodRecipes() {
     ],
     executablePath:
       process.env.NODE_ENV === "production"
-        ? "/usr/bin/chromium" // Path to Chromium in production
-        : undefined, // Use bundled Chromium in development
+        ? "/usr/bin/chromium-browser" // Updated path for Render
+        : undefined,
   });
+
+  console.log("Browser launched successfully");
   const page = await browser.newPage();
 
   // Base URL for pagination

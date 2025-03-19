@@ -60,8 +60,7 @@ services:
       lsb-release \
       wget \
       xdg-utils \
-      chromium \
-      chromium-driver
+      chromium-browser
 
 databases:
   - name: recipe-db
