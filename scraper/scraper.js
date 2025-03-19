@@ -10,13 +10,20 @@ const { execSync } = require("child_process");
 
 async function findChromePath() {
   try {
-    // Try to find Chrome using which command
+    // In production, we know exactly where Chrome is installed
+    if (process.env.NODE_ENV === "production") {
+      const productionChromePath = "/usr/bin/google-chrome-stable";
+      console.log(`Using production Chrome path: ${productionChromePath}`);
+      return productionChromePath;
+    }
+
+    // For local development, try different paths
     const chromePaths = [
-      "/usr/bin/google-chrome",
       "/usr/bin/google-chrome-stable",
-      "/usr/bin/chromium",
-      "/usr/bin/chromium-browser",
-      "/snap/bin/chromium",
+      "/usr/bin/google-chrome",
+      "/usr/bin/chrome",
+      "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome", // for macOS
+      "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe", // for Windows
     ];
 
     for (const path of chromePaths) {
@@ -26,14 +33,8 @@ async function findChromePath() {
         return path;
       } catch (e) {
         // Path not found, try next one
+        console.log(`Chrome not found at: ${path}`);
       }
-    }
-
-    // If no Chrome found in standard paths, try to find it using which
-    const chromePath = execSync("which chromium").toString().trim();
-    if (chromePath) {
-      console.log(`Found Chrome using which: ${chromePath}`);
-      return chromePath;
     }
 
     throw new Error("Chrome not found in any standard location");
