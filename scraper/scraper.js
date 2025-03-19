@@ -1,4 +1,4 @@
-const puppeteer = require("puppeteer");
+const puppeteer = require("puppeteer-core");
 const { addToCategory } = require("../services/categoryService");
 const { addRecipe } = require("../services/recipeService");
 const { addCookingSteps } = require("../services/cookingStepService");
@@ -6,10 +6,55 @@ const { addTags } = require("../services/tagService");
 const { addTools } = require("../services/cookingToolsService");
 const { addIngredients } = require("../services/ingredientService");
 const { addNutritions } = require("../services/nutritionValuesService");
+const { execSync } = require("child_process");
+
+async function findChromePath() {
+  try {
+    // Try to find Chrome using which command
+    const chromePaths = [
+      "/usr/bin/google-chrome",
+      "/usr/bin/google-chrome-stable",
+      "/usr/bin/chromium",
+      "/usr/bin/chromium-browser",
+      "/snap/bin/chromium",
+    ];
+
+    for (const path of chromePaths) {
+      try {
+        execSync(`which ${path}`);
+        console.log(`Found Chrome at: ${path}`);
+        return path;
+      } catch (e) {
+        // Path not found, try next one
+      }
+    }
+
+    // If no Chrome found in standard paths, try to find it using which
+    const chromePath = execSync("which chromium").toString().trim();
+    if (chromePath) {
+      console.log(`Found Chrome using which: ${chromePath}`);
+      return chromePath;
+    }
+
+    throw new Error("Chrome not found in any standard location");
+  } catch (error) {
+    console.error("Error finding Chrome:", error);
+    throw error;
+  }
+}
 
 async function scrapeFoodRecipes() {
   console.log("Starting browser launch...");
   console.log("NODE_ENV:", process.env.NODE_ENV);
+
+  let executablePath;
+  try {
+    executablePath = await findChromePath();
+    console.log(`Using Chrome at: ${executablePath}`);
+  } catch (error) {
+    console.error("Failed to find Chrome:", error);
+    throw error;
+  }
 
   // Launch browser
   const browser = await puppeteer.launch({
@@ -22,10 +67,7 @@ async function scrapeFoodRecipes() {
       "--disable-gpu",
       "--window-size=1920x1080",
     ],
-    executablePath:
-      process.env.NODE_ENV === "production"
-        ? "/usr/bin/chromium-browser" // Updated path for Render
-        : undefined,
+    executablePath,
   });
 
   console.log("Browser launched successfully");
