@@ -71,49 +71,58 @@ async function scrapeFoodRecipes() {
 
     console.log(`Found ${foodCards.length} recipes on page ${currentPage}`);
 
-    // Process a limited number of recipes per page (for testing)
-    for (let i = 0; i <= foodCards.length; i++) {
+    // Process all recipes on the page
+    for (let i = 0; i < foodCards.length; i++) {
       const url = foodCards[i];
+      if (!url || !url.url) {
+        console.log(`Skipping invalid URL at index ${i}`);
+        continue;
+      }
       console.log(`Scraping recipe ${i + 1}/${foodCards.length}: ${url.url}`);
       const recipeData = await scrapeFoodRecipePage(browser, url.url);
-      if (recipeData) scrapedData.push(recipeData);
+      if (!recipeData) {
+        console.log(`No recipe data found for ${url.url}`);
+        continue;
+      }
+      scrapedData.push(recipeData);
 
-      const category = await addToCategory(
-        recipeData.category,
-        recipeData.category
-      );
-      const recipe = await addRecipe({
-        name: recipeData.title,
-        subname: recipeData.subtitle,
-        description: recipeData.description,
-        totalTime: recipeData.totalTime,
-        prepTime: recipeData.prepTime,
-        difficulty: recipeData.difficulty,
-        imageUrl: recipeData.image,
-        category_id: category.data.id,
-      });
+      try {
+        const category = await addToCategory(
+          recipeData.category,
+          recipeData.category
+        );
+        const recipe = await addRecipe({
+          name: recipeData.title,
+          subname: recipeData.subtitle,
+          description: recipeData.description,
+          totalTime: recipeData.totalTime,
+          prepTime: recipeData.prepTime,
+          difficulty: recipeData.difficulty,
+          imageUrl: recipeData.image,
+          category_id: category.data.id,
+        });
 
-      const steps = await addCookingSteps(recipeData.steps, recipe.data.id);
-
-      const tags = await addTags(recipe.data.id, recipeData.tags);
-
-      const tools = await addTools(recipe.data.id, recipeData.utensils);
-
-      const ingredients = await addIngredients(
-        recipe.data.id,
-        recipeData.ingredients
-      );
-
-      const ingredientsNotShipped = await addIngredients(
-        recipe.data.id,
-        recipeData.ingredientsNotShipped,
-        false
-      );
-
-      const nutritions = await addNutritions(
-        recipeData.nutritionalValues,
-        recipe.data.id
-      );
+        const steps = await addCookingSteps(recipeData.steps, recipe.data.id);
+        const tags = await addTags(recipe.data.id, recipeData.tags);
+        const tools = await addTools(recipe.data.id, recipeData.utensils);
+        const ingredients = await addIngredients(
+          recipe.data.id,
+          recipeData.ingredients
+        );
+        const ingredientsNotShipped = await addIngredients(
+          recipe.data.id,
+          recipeData.ingredientsNotShipped,
+          false
+        );
+        const nutritions = await addNutritions(
+          recipeData.nutritionalValues,
+          recipe.data.id
+        );
+        console.log(`Successfully saved recipe: ${recipeData.title}`);
+      } catch (error) {
+        console.error(`Error saving recipe data for ${url.url}:`, error);
+        continue;
+      }
     }
 
     // Optional: Add a small delay between pages to be nice to the server
