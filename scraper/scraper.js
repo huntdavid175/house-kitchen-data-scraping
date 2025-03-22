@@ -32,7 +32,7 @@ async function scrapeFoodRecipes() {
 
   // Configure pagination limits
   const startPage = 1;
-  const maxPages = 2; // Adjust as needed
+  const maxPages = 1749; // Adjust as needed
   const recipesPerPage = 3; // Adjust as needed - set to a small number for testing
 
   // Helper function to replace waitForTimeout
@@ -72,14 +72,9 @@ async function scrapeFoodRecipes() {
     console.log(`Found ${foodCards.length} recipes on page ${currentPage}`);
 
     // Process a limited number of recipes per page (for testing)
-    for (let i = 0; i < Math.min(recipesPerPage, foodCards.length); i++) {
+    for (let i = 0; i <= foodCards.length; i++) {
       const url = foodCards[i];
-      console.log(
-        `Scraping recipe ${i + 1}/${Math.min(
-          recipesPerPage,
-          foodCards.length
-        )}: ${url.url}`
-      );
+      console.log(`Scraping recipe ${i + 1}/${foodCards.length}: ${url.url}`);
       const recipeData = await scrapeFoodRecipePage(browser, url.url);
       if (recipeData) scrapedData.push(recipeData);
 
