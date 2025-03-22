@@ -6,69 +6,21 @@ const { addTags } = require("../services/tagService");
 const { addTools } = require("../services/cookingToolsService");
 const { addIngredients } = require("../services/ingredientService");
 const { addNutritions } = require("../services/nutritionValuesService");
-const { execSync } = require("child_process");
-
-async function findChromePath() {
-  try {
-    // In production, we know exactly where Chrome is installed
-    if (process.env.NODE_ENV === "production") {
-      const productionChromePath = "/usr/bin/google-chrome-stable";
-      console.log(`Using production Chrome path: ${productionChromePath}`);
-      return productionChromePath;
-    }
-
-    // For local development, try different paths
-    const chromePaths = [
-      "/usr/bin/google-chrome-stable",
-      "/usr/bin/google-chrome",
-      "/usr/bin/chrome",
-      "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome", // for macOS
-      "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe", // for Windows
-    ];
-
-    for (const path of chromePaths) {
-      try {
-        execSync(`which ${path}`);
-        console.log(`Found Chrome at: ${path}`);
-        return path;
-      } catch (e) {
-        // Path not found, try next one
-        console.log(`Chrome not found at: ${path}`);
-      }
-    }
-
-    throw new Error("Chrome not found in any standard location");
-  } catch (error) {
-    console.error("Error finding Chrome:", error);
-    throw error;
-  }
-}
 
 async function scrapeFoodRecipes() {
   console.log("Starting browser launch...");
-  console.log("NODE_ENV:", process.env.NODE_ENV);
 
-  let executablePath;
-  try {
-    executablePath = await findChromePath();
-    console.log(`Using Chrome at: ${executablePath}`);
-  } catch (error) {
-    console.error("Failed to find Chrome:", error);
-    throw error;
-  }
-
-  // Launch browser
+  // Launch browser with Chrome
   const browser = await puppeteer.launch({
     headless: true,
     args: [
       "--no-sandbox",
       "--disable-setuid-sandbox",
       "--disable-dev-shm-usage",
-      "--disable-accelerated-2d-canvas",
       "--disable-gpu",
       "--window-size=1920x1080",
     ],
-    executablePath,
+    executablePath: "/usr/bin/google-chrome-stable", // Verified Chrome path
   });
 
   console.log("Browser launched successfully");
