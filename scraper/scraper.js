@@ -9,8 +9,8 @@ const { addNutritions } = require("../services/nutritionValuesService");
 
 async function scrapeFoodRecipes() {
   console.log("Starting browser launch...");
+  let totalRecipesScraped = 0;
 
-  // Launch browser with Chrome
   const browser = await puppeteer.launch({
     headless: true,
     args: [
@@ -18,134 +18,170 @@ async function scrapeFoodRecipes() {
       "--disable-setuid-sandbox",
       "--disable-dev-shm-usage",
       "--disable-gpu",
-      "--window-size=1920x1080",
+      "--window-size=1280x720",
+      "--disable-extensions",
+      "--disable-default-apps",
+      "--mute-audio",
+      "--js-flags=--max-old-space-size=460",
     ],
-    executablePath: "/usr/bin/google-chrome-stable", // Verified Chrome path
+    executablePath: "/usr/bin/google-chrome-stable",
   });
 
   console.log("Browser launched successfully");
-  const page = await browser.newPage();
 
-  // Base URL for pagination
-  const baseUrl = "https://hfresh.info/us-en";
-  let scrapedData = [];
+  try {
+    const baseUrl = "https://hfresh.info/us-en";
+    const startPage = 1;
+    const maxPages = 1749;
 
-  // Configure pagination limits
-  const startPage = 1;
-  const maxPages = 1749; // Adjust as needed
-  const recipesPerPage = 3; // Adjust as needed - set to a small number for testing
+    for (let currentPage = startPage; currentPage <= maxPages; currentPage++) {
+      const page = await browser.newPage();
 
-  // Helper function to replace waitForTimeout
-  const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-
-  // Loop through pages using URL parameters
-  for (let currentPage = startPage; currentPage <= maxPages; currentPage++) {
-    // Construct URL with page parameter
-    const pageUrl =
-      currentPage === 1 ? baseUrl : `${baseUrl}?page=${currentPage}`;
-    console.log(`Navigating to page ${currentPage}: ${pageUrl}`);
-
-    // Go to the page
-    await page.goto(pageUrl, {
-      waitUntil: "networkidle0",
-      timeout: 30000,
-    });
-
-    // Wait for recipe cards to load
-    try {
-      await page.waitForSelector(".card", { timeout: 10000 });
-    } catch (error) {
-      console.error(`No cards found on page ${currentPage}:`, error.message);
-      continue; // Skip to next page if no cards found
-    }
-
-    // Extract recipe URLs from the current page
-    const foodCards = await page.evaluate(() => {
-      let cardsUrl = [];
-      document.querySelectorAll(".card").forEach((card) => {
-        let url = card.querySelector("a")?.href || "No URL";
-        cardsUrl.push({ url });
+      // Block unnecessary resources
+      await page.setRequestInterception(true);
+      page.on("request", (request) => {
+        const resourceType = request.resourceType();
+        if (
+          resourceType === "image" ||
+          resourceType === "stylesheet" ||
+          resourceType === "font"
+        ) {
+          request.abort();
+        } else {
+          request.continue();
+        }
       });
-      return cardsUrl;
-    });
 
-    console.log(`Found ${foodCards.length} recipes on page ${currentPage}`);
+      // Set smaller viewport
+      await page.setViewport({ width: 1280, height: 720 });
 
-    // Process all recipes on the page
-    for (let i = 0; i < foodCards.length; i++) {
-      const url = foodCards[i];
-      if (!url || !url.url) {
-        console.log(`Skipping invalid URL at index ${i}`);
-        continue;
-      }
-      console.log(`Scraping recipe ${i + 1}/${foodCards.length}: ${url.url}`);
-      const recipeData = await scrapeFoodRecipePage(browser, url.url);
-      if (!recipeData) {
-        console.log(`No recipe data found for ${url.url}`);
-        continue;
-      }
-      scrapedData.push(recipeData);
+      const pageUrl =
+        currentPage === 1 ? baseUrl : `${baseUrl}?page=${currentPage}`;
+      console.log(`Processing page ${currentPage}: ${pageUrl}`);
 
       try {
-        const category = await addToCategory(
-          recipeData.category,
-          recipeData.category
-        );
-        const recipe = await addRecipe({
-          name: recipeData.title,
-          subname: recipeData.subtitle,
-          description: recipeData.description,
-          totalTime: recipeData.totalTime,
-          prepTime: recipeData.prepTime,
-          difficulty: recipeData.difficulty,
-          imageUrl: recipeData.image,
-          category_id: category.data.id,
+        await page.goto(pageUrl, {
+          waitUntil: "domcontentloaded",
+          timeout: 30000,
         });
 
-        const steps = await addCookingSteps(recipeData.steps, recipe.data.id);
-        const tags = await addTags(recipe.data.id, recipeData.tags);
-        const tools = await addTools(recipe.data.id, recipeData.utensils);
-        const ingredients = await addIngredients(
-          recipe.data.id,
-          recipeData.ingredients
-        );
-        const ingredientsNotShipped = await addIngredients(
-          recipe.data.id,
-          recipeData.ingredientsNotShipped,
-          false
-        );
-        const nutritions = await addNutritions(
-          recipeData.nutritionalValues,
-          recipe.data.id
-        );
-        console.log(`Successfully saved recipe: ${recipeData.title}`);
+        await page.waitForSelector(".card", { timeout: 10000 });
+
+        const foodCards = await page.evaluate(() => {
+          const cards = document.querySelectorAll(".card");
+          return Array.from(cards, (card) => {
+            const url = card.querySelector("a")?.href;
+            return url || null;
+          }).filter((url) => url);
+        });
+
+        // Close the listing page to free memory
+        await page.close();
+
+        console.log(`Found ${foodCards.length} recipes on page ${currentPage}`);
+
+        // Process recipes one at a time
+        for (let i = 0; i < foodCards.length; i++) {
+          const url = foodCards[i];
+          console.log(`Processing recipe ${i + 1}/${foodCards.length}`);
+
+          try {
+            const recipeData = await scrapeFoodRecipePage(browser, url);
+            if (!recipeData || recipeData.error) {
+              console.log(`Skipping invalid recipe at ${url}`);
+              continue;
+            }
+
+            await saveRecipeToDatabase(recipeData);
+            totalRecipesScraped++;
+
+            // Small delay between recipes
+            await new Promise((resolve) => setTimeout(resolve, 1000));
+          } catch (error) {
+            console.error(`Error processing recipe at ${url}:`, error);
+            continue;
+          }
+        }
+
+        // Every 10 pages, force garbage collection if available
+        if (currentPage % 10 === 0) {
+          console.log(`Processed ${currentPage} pages. Taking a break...`);
+          if (global.gc) {
+            global.gc();
+          }
+          await new Promise((resolve) => setTimeout(resolve, 5000));
+        }
       } catch (error) {
-        console.error(`Error saving recipe data for ${url.url}:`, error);
+        console.error(`Error processing page ${currentPage}:`, error);
+        await page.close();
         continue;
       }
     }
-
-    // Optional: Add a small delay between pages to be nice to the server
-    await delay(1000);
+  } finally {
+    await browser.close();
+    console.log(
+      `Scraping completed. Total recipes scraped: ${totalRecipesScraped}`
+    );
   }
+}
 
-  await browser.close();
-  console.log(
-    `Scraping completed. Total recipes scraped: ${scrapedData.length}`
-  );
-  return scrapedData;
+async function saveRecipeToDatabase(recipeData) {
+  try {
+    const category = await addToCategory(
+      recipeData.category,
+      recipeData.category
+    );
+    const recipe = await addRecipe({
+      name: recipeData.title,
+      subname: recipeData.subtitle,
+      description: recipeData.description,
+      totalTime: recipeData.totalTime,
+      prepTime: recipeData.prepTime,
+      difficulty: recipeData.difficulty,
+      imageUrl: recipeData.image,
+      category_id: category.data.id,
+    });
+
+    // Run database operations in parallel
+    await Promise.all([
+      addCookingSteps(recipeData.steps, recipe.data.id),
+      addTags(recipe.data.id, recipeData.tags),
+      addTools(recipe.data.id, recipeData.utensils),
+      addIngredients(recipe.data.id, recipeData.ingredients),
+      addIngredients(recipe.data.id, recipeData.ingredientsNotShipped, false),
+      addNutritions(recipeData.nutritionalValues, recipe.data.id),
+    ]);
+
+    console.log(`Successfully saved recipe: ${recipeData.title}`);
+  } catch (error) {
+    throw new Error(`Failed to save recipe: ${error.message}`);
+  }
 }
 
 async function scrapeFoodRecipePage(browser, url) {
+  const page = await browser.newPage();
+
   try {
-    const page = await browser.newPage();
+    // Block unnecessary resources
+    await page.setRequestInterception(true);
+    page.on("request", (request) => {
+      const resourceType = request.resourceType();
+      if (
+        resourceType === "image" ||
+        resourceType === "stylesheet" ||
+        resourceType === "font"
+      ) {
+        request.abort();
+      } else {
+        request.continue();
+      }
+    });
 
     await page.goto(url, {
-      waitUntil: "networkidle0",
+      waitUntil: "domcontentloaded",
       timeout: 30000,
     });
 
-    // Extract recipe details
     const data = await page.evaluate(() => {
       try {
         const breadcrumbs = Array.from(
@@ -282,10 +318,10 @@ async function scrapeFoodRecipePage(browser, url) {
       }
     });
 
-    await page.close(); // Close the recipe page when done
+    await page.close();
     return data;
   } catch (error) {
-    console.error(`Error scraping recipe at ${url}:`, error);
+    await page.close();
     return { error: error.message };
   }
 }
